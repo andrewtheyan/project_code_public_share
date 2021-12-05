@@ -20,11 +20,10 @@ class Agent(object):
         # However, this does not work with custom defined classes, due to the way pickle operates
         # TODO you can replace this with your own model
 
-
-        self.t = 0
-
-        self.filename = 'machine_learning_model/trained_model'
-        self.trained_model = pickle.load(open(self.filename, 'rb'))
+        self.ti = 0
+        self.last_block = []
+        self.curr_alpha0 = 0
+        self.curr_alpha1 = 0
 
         # self.nnfilename = 'machine_learning_model/nnpickle_model'
         # self.nn_model = pickle.load(open(self.nnfilename, 'rb'))
@@ -43,6 +42,11 @@ class Agent(object):
         self.item1filename = 'data/item1embedding'
         with open(self.item1filename, 'rb') as f1:
             self.item1embedding = pickle.load(f1)
+
+        #TODO load pickled version of the table here
+        # self.tablepath = 'machine_learning_model/q_table'
+        # with open(self.tablepath, 'rb') as f2:
+        #     self.q_table = pickle.load(f2)
 
 
 
@@ -210,6 +214,10 @@ class Agent(object):
 
 
     def _process_last_sale(self, last_sale, profit_each_team):
+        # if this is the beginning of the new game
+        self.ti +=1
+        if last_sale[2][self.this_agent_number][0] == np.nan:
+            return 1
         # print("last_sale: ", last_sale)
         # print("profit_each_team: ", profit_each_team)
         my_current_profit = profit_each_team[self.this_agent_number]
@@ -231,12 +239,107 @@ class Agent(object):
         # print("Did customer buy from opponent: ",
         #       did_customer_buy_from_opponent)
         # print("Which item customer bought: ", which_item_customer_bought)
+        x=0
+        if did_customer_buy_from_me:
+            x =1
 
-        # TODO - add your code here to potentially update your pricing strategy based on what happened in the last round
-        # price adjustment based on last 
-        
+        y=0
+        if did_customer_buy_from_opponent:
+            y =1
+        #keep track of the last 100 sales
+        data = [which_item_customer_bought,x,y,my_last_prices,opponent_last_prices,my_current_profit, opponent_current_profit]
+        self.last_block.append(data)
 
 
+        n = 30
+        if len(self.last_block) == 2*n+1:
+            self.last_block.pop(0)
+
+ 
+        # only make price adjustment after every 50 T
+        if (self.ti > n) & (self.ti % n == 1 ):
+            # analyze last 50 T
+            self.analysis(None, self.last_block[-n:])
+            # if len(self.last_block) >50 :
+            #     self.analysis(self.last_block[-100:-50],self.last_block[-50:])
+            # else:
+            #     #TODO make policy decision
+            #     self.analysis(None, self.last_block[-50:])
+
+
+
+          
+
+    def analysis(self,old_list, new_list):
+        if old_list is None:
+            # change in profit differences thru out the 50 Ts
+            profit_diff = (new_list[-1][5] - new_list[-1][6]) - (new_list[0][5] - new_list[0][6])
+            n_me_0 = 0
+            n_me_1 = 0
+            # n_oppo_0 = 0
+            # n_oppo_1 = 0
+            item_0_loss = []
+            item_1_loss = []
+
+            #TODO if customer bought from neither team, consider lowering price
+
+            for result in new_list:
+                if result[0] ==0:
+                    n_me_0 += result[1]
+                    # n_oppo_0 += result[2]
+                elif result[0] ==1:
+                    n_me_1 += result[1]
+                    # n_oppo_1 += result[2]
+
+                # if customer bought from opponent, what is avg diferences in price
+                #item 0
+                if (result[2] == 1) & (result[0]== 0):
+                    my_p = result[3][0]
+                    oppo_p = result[4][0]
+                    item_0_loss.append(my_p - oppo_p)
+
+                #item 1
+                if (result[2] ==1) & (result[0]== 1):
+                    my_p = result[3][1]
+                    oppo_p = result[4][1]
+                    item_1_loss.append(my_p - oppo_p)
+
+
+            item_0_loss = self.remove_outlier(item_0_loss)
+            item_1_loss = self.remove_outlier(item_1_loss)
+            #remove outliers in item_0loss and item_1 loss
+            n_oppo_0 = len(item_0_loss)
+            n_oppo_1 = len(item_1_loss)
+            # self.curr_alpha0 = 1 * self.curr_alpha0
+            # self.curr_alpha1 = 1 * self.curr_alpha1
+
+            # if opponent outsell me 5 items for item0, I lower my price by that amount
+            if n_oppo_1 - n_me_1 >= 3:
+                if len(item_0_loss) != 0:
+                    avg0 = sum(item_0_loss)/len(item_0_loss)
+                    self.curr_alpha0 +=  -(avg0 + 0.02)
+            # if Im performing really raelly well, try incraesing my price
+            # elif n_me_0 - n_oppo_0 >= 10:
+            #     # self.curr_alpha0 += abs(n_me_0 - n_oppo_0) * 0.005
+            #     if self.curr_alpha0 <0 :
+            #         self.curr_alpha0 += min(0.03, abs(self.curr_alpha0))
+
+            # if opponent outsell me 5 items for item1, I lower my price by that amount
+            if n_oppo_1 - n_me_1 >= 3:
+                if len(item_1_loss) != 0:
+                    avg1 = sum(item_1_loss)/len(item_1_loss)
+                    self.curr_alpha1 +=  -(avg1 + 0.02)
+            # elif n_me_1 - n_oppo_1 >= 10:
+            #     # self.curr_alpha0 += abs(n_me_0 - n_oppo_0) * 0.005
+            #     if self.curr_alpha1 <0 :
+            #         self.curr_alpha1 += min(0.03, abs(self.curr_alpha1))
+                
+        #TODO run T/Z test to test out significant difference in last method tried.
+    def remove_outlier(self, l):
+        if len(l)<1:
+            return []
+        data = np.array(l)
+        return list(data[abs(data - np.mean(data)) < 2.1 * np.std(data)])
     # Given an observation which is #info for new buyer, information for last iteration, and current profit from each time
     # Covariates of the current buyer, and potentially embedding. Embedding may be None
     # Data from last iteration (which item customer purchased, who purchased from, prices for each agent for each item (2x2, where rows are agents and columns are items)))
@@ -246,6 +349,7 @@ class Agent(object):
         # if this is the beginning of a new game
         if last_sale[2][self.this_agent_number][0] == np.nan:
             self.ti = 0
+            self.last_block = []
         #filling in missing user embedding
         if new_buyer_embedding is None :
             #output (1,13)
@@ -278,14 +382,22 @@ class Agent(object):
 
         rev, x, y = self.rand_init_adv_grid_search(xmax=4.1, ymax=2.5,user=X_train_tensor, nn=True, silent=True, start_iter_=8)#,start_iter_=25
         # rev, x, y = self.adv_gridsearch_rev(xmax=4.1, ymax=2.5,user=X_train_tensor, nn=True, silent=True, max_iter_=8)
-        price = [y,x]
+        
 
 
         self._process_last_sale(last_sale, profit_each_team)
         # return self.trained_model.predict(np.array([1, 2, 3]).reshape(1, -1))[0] + random.random()
-        print(price)
+        self.check_alpha()
 
-        self.t +=1
+        y = y + self.curr_alpha0
+        if y <= 0.01:
+            y= 0.01
+
+        x = x + self.curr_alpha1
+        if x <= 0.01:
+            x= 0.01
+        price = [y, x]
+
         return price
 
         # return [10,10]
@@ -295,5 +407,11 @@ class Agent(object):
 
 
         #TODO: implement grid search 
+    def check_alpha(self):
+        if self.curr_alpha0 > 0.4:
+            self.curr_alpha0 = 0.4
+
+        if self.curr_alpha1 > 0.8:
+            self.curr_alpha1 = 0.8
 
 

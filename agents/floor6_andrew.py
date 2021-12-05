@@ -25,9 +25,6 @@ class Agent(object):
         self.curr_alpha0 = 0
         self.curr_alpha1 = 0
 
-        self.filename = 'machine_learning_model/trained_model'
-        self.trained_model = pickle.load(open(self.filename, 'rb'))
-
         # self.nnfilename = 'machine_learning_model/nnpickle_model'
         # self.nn_model = pickle.load(open(self.nnfilename, 'rb'))
         self.nn_model  = torch.load('machine_learning_model/125_nn_model')
@@ -253,14 +250,16 @@ class Agent(object):
         data = [which_item_customer_bought,x,y,my_last_prices,opponent_last_prices,my_current_profit, opponent_current_profit]
         self.last_block.append(data)
 
-        if len(self.last_block) == 101:
+
+        n = 30
+        if len(self.last_block) == 2*n+1:
             self.last_block.pop(0)
 
  
         # only make price adjustment after every 50 T
-        if (self.ti > 50) & (self.ti % 50 == 1 ):
+        if (self.ti > n) & (self.ti % n == 1 ):
             # analyze last 50 T
-            self.analysis(None, self.last_block[-50:])
+            self.analysis(None, self.last_block[-n:])
             # if len(self.last_block) >50 :
             #     self.analysis(self.last_block[-100:-50],self.last_block[-50:])
             # else:
@@ -294,16 +293,16 @@ class Agent(object):
 
                 # if customer bought from opponent, what is avg diferences in price
                 #item 0
-                if result[2] ==1 & result[0]== 0:
+                if (result[2] == 1) & (result[0]== 0):
                     my_p = result[3][0]
                     oppo_p = result[4][0]
                     item_0_loss.append(my_p - oppo_p)
 
                 #item 1
-                if result[2] ==1 & result[0]== 1:
+                if (result[2] ==1) & (result[0]== 1):
                     my_p = result[3][1]
                     oppo_p = result[4][1]
-                    item1_loss.append(my_p - oppo_p)
+                    item_1_loss.append(my_p - oppo_p)
 
 
             item_0_loss = self.remove_outlier(item_0_loss)
@@ -311,26 +310,29 @@ class Agent(object):
             #remove outliers in item_0loss and item_1 loss
             n_oppo_0 = len(item_0_loss)
             n_oppo_1 = len(item_1_loss)
-            if n_me >= 40:
-                # self.curr_alpha0 = 1 * self.curr_alpha0
-                # self.curr_alpha1 = 1 * self.curr_alpha1
+            # self.curr_alpha0 = 1 * self.curr_alpha0
+            # self.curr_alpha1 = 1 * self.curr_alpha1
 
             # if opponent outsell me 5 items for item0, I lower my price by that amount
-            if n_oppo_0 - n_me_0 >= -5:
+            if n_oppo_1 - n_me_1 >= 3:
                 if len(item_0_loss) != 0:
                     avg0 = sum(item_0_loss)/len(item_0_loss)
                     self.curr_alpha0 +=  -(avg0 + 0.02)
             # if Im performing really raelly well, try incraesing my price
-            elif n_me_0 - n_oppo_0 >= 15:
-                self.curr_alpha0 += (n_oppo_0 - n_me_0) * 0.005
+            elif n_me_0 - n_oppo_0 >= 10:
+                # self.curr_alpha0 += abs(n_me_0 - n_oppo_0) * 0.005
+                if self.curr_alpha0 <0 :
+                    self.curr_alpha0 += min(0.03, abs(self.curr_alpha0))
 
             # if opponent outsell me 5 items for item1, I lower my price by that amount
-            if n_oppo_1 - n_me_1 >= -5:
+            if n_oppo_1 - n_me_1 >= 3:
                 if len(item_1_loss) != 0:
                     avg1 = sum(item_1_loss)/len(item_1_loss)
                     self.curr_alpha1 +=  -(avg1 + 0.02)
-            elif n_me_1 - n_oppo_1 >= 15:
-                self.curr_alpha0 += (n_oppo_0 - n_me_0) * 0.005
+            elif n_me_1 - n_oppo_1 >= 10:
+                # self.curr_alpha0 += abs(n_me_0 - n_oppo_0) * 0.005
+                if self.curr_alpha1 <0 :
+                    self.curr_alpha1 += min(0.03, abs(self.curr_alpha1))
                 
         #TODO run T/Z test to test out significant difference in last method tried.
     def remove_outlier(self, l):
@@ -362,7 +364,6 @@ class Agent(object):
 
         i0_dot = np.dot(new_buyer_embedding, self.item0embedding)
         i1_dot = np.dot(new_buyer_embedding, self.item1embedding)
-0
         #preparing Neural Network Input
         train_x = pd.DataFrame(new_buyer_covariates.reshape(1,-1), columns = ['Covariate 1', 'Covariate 2', 'Covariate 3'])
         train_x['price_item_0'] = 1
@@ -386,13 +387,17 @@ class Agent(object):
 
         self._process_last_sale(last_sale, profit_each_team)
         # return self.trained_model.predict(np.array([1, 2, 3]).reshape(1, -1))[0] + random.random()
-        if self.curr_alpha0 > 0.4:
-            self.curr_alpha0 = 0
+        self.check_alpha()
 
-        if self.curr_alpha1 > 0.8:
-            self.curr_alpha1 = 0
+        y = y + self.curr_alpha0
+        if y <= 0.000001:
+            y= 0.000001
 
-        price = [y + self.curr_alpha0, x + self.curr_alpha1]
+        x = x + self.curr_alpha1
+        if x <= 0.000001:
+            x= 0.000001
+        price = [y, x]
+
         return price
 
         # return [10,10]
@@ -402,5 +407,11 @@ class Agent(object):
 
 
         #TODO: implement grid search 
+    def check_alpha(self):
+        if self.curr_alpha0 > 0.4:
+            self.curr_alpha0 = 0.4
+
+        if self.curr_alpha1 > 0.8:
+            self.curr_alpha1 = 0.8
 
 
