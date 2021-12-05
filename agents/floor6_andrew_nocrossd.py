@@ -26,6 +26,7 @@ class Agent(object):
         self.curr_alpha0 = -0.2
         self.curr_alpha1 = -0.5
 
+
         # self.nnfilename = 'machine_learning_model/nnpickle_model'
         # self.nn_model = pickle.load(open(self.nnfilename, 'rb'))
         self.nn_model  = torch.load('machine_learning_model/125_nn_model')
@@ -323,8 +324,13 @@ class Agent(object):
             # if Im performing really raelly well, try incraesing my price
             elif n_me_0 - n_oppo_0 >= 10:
                 # self.curr_alpha0 += abs(n_me_0 - n_oppo_0) * 0.005
-                if self.curr_alpha0 <0 :
+                # if self.curr_alpha0 <0 :
+                #     self.curr_alpha0 += min(0.07, abs(self.curr_alpha0))
+
+                if (self.curr_alpha0 <0 ) :
                     self.curr_alpha0 += min(0.07, abs(self.curr_alpha0))
+                # elif (self.curr_alpha0 <0) & (self.ti >60) &(  (new_list[-1][6] - new_list[0][6] - self.oppo_prof)/(self.oppo_prof+0.1) > 2  ):
+                #     self.curr_alpha0 = self.curr_alpha0- 0.4
 
             # if opponent outsell me 5 items for item1, I lower my price by that amount
             if n_oppo_1 - n_me_1 >= 1:
@@ -333,9 +339,12 @@ class Agent(object):
                     self.curr_alpha1 +=  -(avg1 + 0.02)
             elif n_me_1 - n_oppo_1 >= 10:
                 # self.curr_alpha0 += abs(n_me_0 - n_oppo_0) * 0.005
-                if self.curr_alpha1 <0 :
+                if (self.curr_alpha1 <0):
                     self.curr_alpha1 += min(0.07, abs(self.curr_alpha1))
-                
+                # elif (self.curr_alpha1 <0) & (self.ti >60) &(  (new_list[-1][6] - new_list[0][6] - self.oppo_prof)/(self.oppo_prof+0.1) > 2  ):
+                #     self.curr_alpha1 = self.curr_alpha1- 1
+            
+
         #TODO run T/Z test to test out significant difference in last method tried.
     def remove_outlier(self, l):
         if len(l)<1:
