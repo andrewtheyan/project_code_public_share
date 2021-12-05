@@ -23,8 +23,9 @@ class Agent(object):
 
         self.ti = 0
         self.last_block = []
-        self.curr_alpha0 = 0
-        self.curr_alpha1 = 0
+        self.curr_alpha0 = -0.2
+        self.curr_alpha1 = -0.5
+
 
         # self.nnfilename = 'machine_learning_model/nnpickle_model'
         # self.nn_model = pickle.load(open(self.nnfilename, 'rb'))
@@ -277,8 +278,8 @@ class Agent(object):
             profit_diff = (new_list[-1][5] - new_list[-1][6]) - (new_list[0][5] - new_list[0][6])
             n_me_0 = 0
             n_me_1 = 0
-            # n_oppo_0 = 0
-            # n_oppo_1 = 0
+            n_oppo_0 = 0
+            n_oppo_1 = 0
             item_0_loss = []
             item_1_loss = []
 
@@ -287,10 +288,10 @@ class Agent(object):
             for result in new_list:
                 if result[0] ==0:
                     n_me_0 += result[1]
-                    # n_oppo_0 += result[2]
+                    n_oppo_0 += result[2]
                 elif result[0] ==1:
                     n_me_1 += result[1]
-                    # n_oppo_1 += result[2]
+                    n_oppo_1 += result[2]
 
                 # if customer bought from opponent, what is avg diferences in price
                 #item 0
@@ -305,7 +306,7 @@ class Agent(object):
                     oppo_p = result[4][1]
                     item_1_loss.append(my_p - oppo_p)
 
-
+            total_bought = n_me_0 + n_me_1 + n_oppo_0 + n_oppo_1
             item_0_loss = self.remove_outlier(item_0_loss)
             item_1_loss = self.remove_outlier(item_1_loss)
             #remove outliers in item_0loss and item_1 loss
@@ -314,27 +315,34 @@ class Agent(object):
             # self.curr_alpha0 = 1 * self.curr_alpha0
             # self.curr_alpha1 = 1 * self.curr_alpha1
 
+            my_last_block_profit = new_list[-1][5] - new_list[0][5]
             # if opponent outsell me 5 items for item0, I lower my price by that amount
-            if n_oppo_1 - n_me_1 >= 3:
+            if n_oppo_1 - n_me_1 >= 1:
                 if len(item_0_loss) != 0:
-                    avg0 = sum(item_0_loss)/len(item_0_loss)
+                    avg0 = max(sum(item_0_loss)/len(item_0_loss), 0.02)
                     self.curr_alpha0 +=  -(avg0 + 0.02)
             # if Im performing really raelly well, try incraesing my price
-            # elif n_me_0 - n_oppo_0 >= 10:
-            #     # self.curr_alpha0 += abs(n_me_0 - n_oppo_0) * 0.005
-            #     if self.curr_alpha0 <0 :
-            #         self.curr_alpha0 += min(0.07, abs(self.curr_alpha0))
+            elif ((n_me_0 - n_oppo_0) >= 10) & ((n_me_0 - n_oppo_0) + (n_me_1 - n_oppo_1) < total_bought-2):
+      
+                if (self.curr_alpha0 <0 ) :
+                    self.curr_alpha0 += min(0.07, abs(self.curr_alpha0))
+                # elif (self.curr_alpha0 <0) & (self.ti >60) &(  (new_list[-1][6] - new_list[0][6] - self.oppo_prof)/(self.oppo_prof+0.1) > 2  ):
+                #     self.curr_alpha0 = self.curr_alpha0- 0.4
+
 
             # if opponent outsell me 5 items for item1, I lower my price by that amount
-            if n_oppo_1 - n_me_1 >= 3:
+            if n_oppo_1 - n_me_1 >= 1:
                 if len(item_1_loss) != 0:
-                    avg1 = sum(item_1_loss)/len(item_1_loss)
+                    avg1 = max(sum(item_1_loss)/len(item_1_loss),0.02)
                     self.curr_alpha1 +=  -(avg1 + 0.02)
-            # elif n_me_1 - n_oppo_1 >= 10:
-            #     # self.curr_alpha0 += abs(n_me_0 - n_oppo_0) * 0.005
-            #     if self.curr_alpha1 <0 :
-            #         self.curr_alpha1 += min(0.07, abs(self.curr_alpha1))
-                
+            elif ((n_me_1 - n_oppo_1) >= 10) & ((n_me_0 - n_oppo_0) + (n_me_1 - n_oppo_1) < total_bought-2):
+                # self.curr_alpha0 += abs(n_me_0 - n_oppo_0) * 0.005
+                if (self.curr_alpha1 <0):
+                    self.curr_alpha1 += min(0.07, abs(self.curr_alpha1))
+                # elif (self.curr_alpha1 <0) & (self.ti >60) &(  (new_list[-1][6] - new_list[0][6] - self.oppo_prof)/(self.oppo_prof+0.1) > 2  ):
+                #     self.curr_alpha1 = self.curr_alpha1- 1
+            
+
         #TODO run T/Z test to test out significant difference in last method tried.
     def remove_outlier(self, l):
         if len(l)<1:
@@ -388,11 +396,12 @@ class Agent(object):
         # return self.trained_model.predict(np.array([1, 2, 3]).reshape(1, -1))[0] + random.random()
 
         #if i got passed
-        # pre = self.last_block[-1]
-        # prepre = self.last_block[-2]
-        # if (self.ti >10) & (pre[-1] > pre[-2] ) & (prepre[-1] < prepre[-1] ):
-        #     self.curr_alpha0 = -0.4
-        #     self.curr_alpha0 = -1
+        # if self.ti >3:
+        #     pre = self.last_block[-1]
+        #     prepre = self.last_block[-2]
+        #     if (self.ti >10) & (pre[-1] > pre[-2] ) & (prepre[-1] < prepre[-2] ):
+        #         self.curr_alpha0 = min(-0.6,self.curr_alpha0 - 0.2)
+        #         self.curr_alpha0 = min(-1.2,self.curr_alpha0 - 0.5)
 
         self.check_alpha()
 
