@@ -315,9 +315,9 @@ class Agent(object):
             # self.curr_alpha1 = 1 * self.curr_alpha1
 
             # if opponent outsell me 5 items for item0, I lower my price by that amount
-            if n_oppo_1 - n_me_1 >= 3:
+            if n_oppo_1 - n_me_1 >= 1:
                 if len(item_0_loss) != 0:
-                    avg0 = sum(item_0_loss)/len(item_0_loss)
+                    avg0 = max(sum(item_0_loss)/len(item_0_loss), 0.02)
                     self.curr_alpha0 +=  -(avg0 + 0.02)
             # if Im performing really raelly well, try incraesing my price
             elif n_me_0 - n_oppo_0 >= 10:
@@ -326,9 +326,9 @@ class Agent(object):
                     self.curr_alpha0 += min(0.07, abs(self.curr_alpha0))
 
             # if opponent outsell me 5 items for item1, I lower my price by that amount
-            if n_oppo_1 - n_me_1 >= 3:
+            if n_oppo_1 - n_me_1 >= 1:
                 if len(item_1_loss) != 0:
-                    avg1 = sum(item_1_loss)/len(item_1_loss)
+                    avg1 = max(sum(item_1_loss)/len(item_1_loss),0.02)
                     self.curr_alpha1 +=  -(avg1 + 0.02)
             elif n_me_1 - n_oppo_1 >= 10:
                 # self.curr_alpha0 += abs(n_me_0 - n_oppo_0) * 0.005
@@ -388,11 +388,12 @@ class Agent(object):
         # return self.trained_model.predict(np.array([1, 2, 3]).reshape(1, -1))[0] + random.random()
 
         #if i got passed
-        # pre = self.last_block[-1]
-        # prepre = self.last_block[-2]
-        # if (self.ti >10) & (pre[-1] > pre[-2] ) & (prepre[-1] < prepre[-1] ):
-        #     self.curr_alpha0 = -0.4
-        #     self.curr_alpha0 = -1
+        if self.ti >3:
+            pre = self.last_block[-1]
+            prepre = self.last_block[-2]
+            if (self.ti >10) & (pre[-1] > pre[-2] ) & (prepre[-1] < prepre[-2] ):
+                self.curr_alpha0 = min(-0.6,self.curr_alpha0 - 0.2)
+                self.curr_alpha0 = min(-1.2,self.curr_alpha0 - 0.5)
 
         self.check_alpha()
 

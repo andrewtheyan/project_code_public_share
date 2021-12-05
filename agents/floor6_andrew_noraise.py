@@ -4,6 +4,7 @@ import os
 import numpy as np
 import pandas as pd
 import math
+import sys
 
 import torch
 import torch.nn as nn
@@ -252,7 +253,7 @@ class Agent(object):
 
 
         n = 30
-        if len(self.last_block) == 2*n+1:
+        if len(self.last_block) == (2*n)+1:
             self.last_block.pop(0)
 
  
@@ -322,7 +323,7 @@ class Agent(object):
             # elif n_me_0 - n_oppo_0 >= 10:
             #     # self.curr_alpha0 += abs(n_me_0 - n_oppo_0) * 0.005
             #     if self.curr_alpha0 <0 :
-            #         self.curr_alpha0 += min(0.03, abs(self.curr_alpha0))
+            #         self.curr_alpha0 += min(0.07, abs(self.curr_alpha0))
 
             # if opponent outsell me 5 items for item1, I lower my price by that amount
             if n_oppo_1 - n_me_1 >= 3:
@@ -332,7 +333,7 @@ class Agent(object):
             # elif n_me_1 - n_oppo_1 >= 10:
             #     # self.curr_alpha0 += abs(n_me_0 - n_oppo_0) * 0.005
             #     if self.curr_alpha1 <0 :
-            #         self.curr_alpha1 += min(0.03, abs(self.curr_alpha1))
+            #         self.curr_alpha1 += min(0.07, abs(self.curr_alpha1))
                 
         #TODO run T/Z test to test out significant difference in last method tried.
     def remove_outlier(self, l):
@@ -383,21 +384,29 @@ class Agent(object):
         rev, x, y = self.rand_init_adv_grid_search(xmax=4.1, ymax=2.5,user=X_train_tensor, nn=True, silent=True, start_iter_=8)#,start_iter_=25
         # rev, x, y = self.adv_gridsearch_rev(xmax=4.1, ymax=2.5,user=X_train_tensor, nn=True, silent=True, max_iter_=8)
         
-
-
         self._process_last_sale(last_sale, profit_each_team)
         # return self.trained_model.predict(np.array([1, 2, 3]).reshape(1, -1))[0] + random.random()
+
+        #if i got passed
+        # pre = self.last_block[-1]
+        # prepre = self.last_block[-2]
+        # if (self.ti >10) & (pre[-1] > pre[-2] ) & (prepre[-1] < prepre[-1] ):
+        #     self.curr_alpha0 = -0.4
+        #     self.curr_alpha0 = -1
+
         self.check_alpha()
 
         y = y + self.curr_alpha0
-        if y <= 0.01:
-            y= 0.01
+        if y <= 0.000001:
+            y= 0.000001
 
         x = x + self.curr_alpha1
-        if x <= 0.01:
-            x= 0.01
+        if x <= 0.000001:
+            x= 0.000001
         price = [y, x]
 
+        if self.ti <=7:
+            return[sys.float_info.min,sys.float_info.min]
         return price
 
         # return [10,10]

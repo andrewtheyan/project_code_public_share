@@ -23,8 +23,8 @@ class Agent(object):
 
         self.ti = 0
         self.last_block = []
-        self.curr_alpha0 = 0
-        self.curr_alpha1 = 0
+        self.curr_alpha0 = -0.2
+        self.curr_alpha1 = -0.5
 
         # self.nnfilename = 'machine_learning_model/nnpickle_model'
         # self.nn_model = pickle.load(open(self.nnfilename, 'rb'))
@@ -314,6 +314,7 @@ class Agent(object):
             # self.curr_alpha0 = 1 * self.curr_alpha0
             # self.curr_alpha1 = 1 * self.curr_alpha1
 
+            my_last_block_profit = new_list[-1][5] - new_list[0][5]
             # if opponent outsell me 5 items for item0, I lower my price by that amount
             if n_oppo_1 - n_me_1 >= 1:
                 if len(item_0_loss) != 0:
@@ -388,12 +389,12 @@ class Agent(object):
         # return self.trained_model.predict(np.array([1, 2, 3]).reshape(1, -1))[0] + random.random()
 
         #if i got passed
-        if self.ti >3:
-            pre = self.last_block[-1]
-            prepre = self.last_block[-2]
-            if (self.ti >10) & (pre[-1] > pre[-2] ) & (prepre[-1] < prepre[-2] ):
-                self.curr_alpha0 = min(-0.6,self.curr_alpha0 - 0.2)
-                self.curr_alpha0 = min(-1.2,self.curr_alpha0 - 0.5)
+        # if self.ti >3:
+        #     pre = self.last_block[-1]
+        #     prepre = self.last_block[-2]
+        #     if (self.ti >10) & (pre[-1] > pre[-2] ) & (prepre[-1] < prepre[-2] ):
+        #         self.curr_alpha0 = min(-0.6,self.curr_alpha0 - 0.2)
+        #         self.curr_alpha0 = min(-1.2,self.curr_alpha0 - 0.5)
 
         self.check_alpha()
 
