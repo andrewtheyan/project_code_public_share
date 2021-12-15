@@ -350,7 +350,7 @@ class Agent(object):
         if len(l)<1:
             return []
         data = np.array(l)
-        return list(data[data < 5])#abs(data - np.mean(data)) < 2.1 * np.std(data)
+        return print( list(data[(data < 5) & (data > 0.001)]) )#abs(data - np.mean(data)) < 2.1 * np.std(data)
     # Given an observation which is #info for new buyer, information for last iteration, and current profit from each time
     # Covariates of the current buyer, and potentially embedding. Embedding may be None
     # Data from last iteration (which item customer purchased, who purchased from, prices for each agent for each item (2x2, where rows are agents and columns are items)))
